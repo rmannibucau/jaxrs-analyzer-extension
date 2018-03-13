@@ -10,7 +10,7 @@ public class EnrichedAsciidocBackend extends AsciiDocBackend {
     @Override
     protected void appendMethod(final String baseUri, final String resource, final ResourceMethod resourceMethod) {
         super.appendMethod(baseUri, resource, resourceMethod);
-        ofNullable(resourceMethod.getDescription()).ifPresent(d -> builder.append(d).append("\n\n"));
+        ofNullable(resourceMethod.getDescription()).ifPresent(d -> builder.append(d.replaceAll("\n +", "\n")).append("\n\n"));
     }
 
     @Override
