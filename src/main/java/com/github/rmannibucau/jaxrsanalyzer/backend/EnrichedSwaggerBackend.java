@@ -395,7 +395,14 @@ public class EnrichedSwaggerBackend implements Backend {
 
         private void addObject(final JsonObjectBuilder builder, final TypeIdentifier identifier,
                 final Map<String, TypeIdentifier> properties) {
-            final String definition = buildDefinition(identifier.getName());
+            final String type = identifier.getName();
+            if ("[B".equals(type)) { // byte array
+                builder.add("type", "array")
+                    .add("items", Json.createObjectBuilder().add("type", "string").add("format", "binary"));
+                return;
+            }
+
+            final String definition = buildDefinition(type);
 
             if (jsonDefinitions.containsKey(definition)) {
                 builder.add("$ref", "#/definitions/" + definition);
@@ -403,14 +410,14 @@ public class EnrichedSwaggerBackend implements Backend {
             }
 
             // reserve definition
-            jsonDefinitions.put(definition, Pair.of(identifier.getName(), Json.createObjectBuilder().build()));
+            jsonDefinitions.put(definition, Pair.of(type, Json.createObjectBuilder().build()));
 
             final JsonObjectBuilder nestedBuilder = Json.createObjectBuilder();
 
             properties.entrySet().stream().sorted(mapKeyComparator())
                     .forEach(e -> nestedBuilder.add(e.getKey(), build(e.getValue())));
             jsonDefinitions.put(definition,
-                    Pair.of(identifier.getName(), Json.createObjectBuilder()
+                    Pair.of(type, Json.createObjectBuilder()
                                                       .add("properties", nestedBuilder)
                                                       .add("x-restlet", Json.createObjectBuilder().add("section", MODEL_SECTION))
                                                       .build()));
