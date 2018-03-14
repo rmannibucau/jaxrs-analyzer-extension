@@ -7,6 +7,7 @@ import static com.sebastian_daschner.jaxrs_analyzer.model.Types.DOUBLE_TYPES;
 import static com.sebastian_daschner.jaxrs_analyzer.model.Types.INTEGER_TYPES;
 import static com.sebastian_daschner.jaxrs_analyzer.model.Types.PRIMITIVE_BOOLEAN;
 import static com.sebastian_daschner.jaxrs_analyzer.model.Types.STRING;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 import static java.util.Comparator.comparing;
 import static java.util.Locale.ROOT;
@@ -16,6 +17,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,6 +57,7 @@ import com.sebastian_daschner.jaxrs_analyzer.utils.StringUtils;
 public class EnrichedSwaggerBackend implements Backend {
 
     private static final String SWAGGER_VERSION = "2.0";
+    private static final String MODEL_SECTION = "Model";
 
     private final Lock lock = new ReentrantLock();
 
@@ -69,7 +73,7 @@ public class EnrichedSwaggerBackend implements Backend {
 
     private String projectVersion;
 
-    private final Collection<String> sections = new HashSet<>();
+    private final Collection<String> sections = new HashSet<>(singleton(MODEL_SECTION));
 
     @Override
     public String getName() {
@@ -114,6 +118,15 @@ public class EnrichedSwaggerBackend implements Backend {
 
         if (!sections.isEmpty()) {
             final JsonArrayBuilder xRestletSections = sections.stream()
+                                  .sorted((o1, o2) -> {
+                                      if (MODEL_SECTION.equals(o1)) {
+                                          return 1;
+                                      }
+                                      if (MODEL_SECTION.equals(o2)) {
+                                          return -1;
+                                      }
+                                      return o1.compareTo(o2);
+                                  })
                                 .collect(Json::createArrayBuilder, JsonArrayBuilder::add, JsonArrayBuilder::addAll);
             builder.add("x-restlet",
                     Json.createObjectBuilder()
@@ -184,7 +197,7 @@ public class EnrichedSwaggerBackend implements Backend {
         final JsonObjectBuilder builder = Json.createObjectBuilder();
 
         if (method.getDescription() != null)
-            builder.add("description", method.getDescription());
+            builder.add("description", method.getDescription() + (method.isDeprecated() ? "\n\nWARNING: this endpoint is deprecated" : ""));
 
         builder.add("consumes", consumes).add("produces", produces).add("parameters", buildParameters(method)).add("responses",
                 buildResponses(method));
@@ -401,7 +414,10 @@ public class EnrichedSwaggerBackend implements Backend {
             properties.entrySet().stream().sorted(mapKeyComparator())
                     .forEach(e -> nestedBuilder.add(e.getKey(), build(e.getValue())));
             jsonDefinitions.put(definition,
-                    Pair.of(identifier.getName(), Json.createObjectBuilder().add("properties", nestedBuilder).build()));
+                    Pair.of(identifier.getName(), Json.createObjectBuilder()
+                                                      .add("properties", nestedBuilder)
+                                                      .add("x-restlet", Json.createObjectBuilder().add("section", MODEL_SECTION))
+                                                      .build()));
 
             builder.add("$ref", "#/definitions/" + definition);
         }
