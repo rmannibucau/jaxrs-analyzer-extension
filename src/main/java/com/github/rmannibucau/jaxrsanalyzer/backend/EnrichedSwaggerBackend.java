@@ -17,8 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -141,9 +139,7 @@ public class EnrichedSwaggerBackend implements Backend {
         builder.add("swagger", SWAGGER_VERSION)
                 .add("info", Json.createObjectBuilder().add("version", projectVersion).add("title", projectName))
                 .add("host", options.getDomain() == null ? "" : options.getDomain())
-                .add("basePath",
-                        (options.getDomain() != null && !"".equals(options.getDomain().trim()) ? '/' : '/' + projectName + '/')
-                                + resources.getBasePath())
+                .add("basePath", '/' + (resources.getBasePath() != null ? resources.getBasePath() : ""))
                 .add("schemes", options.getSchemes().stream().map(Enum::name).map(String::toLowerCase).sorted()
                         .collect(Json::createArrayBuilder, JsonArrayBuilder::add, JsonArrayBuilder::add).build());
         if (options.isRenderTags()) {
